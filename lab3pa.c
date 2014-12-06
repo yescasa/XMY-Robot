@@ -24,32 +24,70 @@ _CONFIG2( IESO_OFF & SOSCSEL_SOSC & WUTSEL_LEG & FNOSC_PRIPLL & FCKSM_CSDCMD & O
 volatile double adcValue = 0.0;
 volatile int converted = 0;
 volatile int switchon = 0;
-volatile int left, middle, right;
+volatile int left, bar, right;
 volatile int turned = 0;
+volatile int turnstop=0;
+volatile char barcode[5];
+
 /*
  * 
  */
+
+void DelayTurn() {
+
+	// TODO: Use Timer 2 to delay for precisely (as precise as possible) usDelay
+	// microseconds provided by the input variable.
+	//
+	// Hint: Determine the configuration for the PR1 setting that provides for a
+	// one microsecond delay, and multiply this by the input variable.
+	// Be sure to user integer values only.
+/**********************************************/
+
+        PR4=0xFFFF;
+        PR5=0x1C1;
+	TMR4 = 0;
+        TMR5 = 0;
+        IFS1bits.T5IF=0;
+        IEC1bits.T5IE=0;
+        T4CONbits.T32=1;
+        T4CONbits.TON=1;
+        T4CONbits.TCKPS0=1;
+        T4CONbits.TCKPS1=1;
+
+
+        while(IFS1bits.T5IF==0){}
+        T4CONbits.TON = 0;
+        turnstop=3;
+
+
+/*****************************************************/
+}
 int main() {
 
     char adcValueStr[8];
     int period = 14745600/10000-1;
     double ocValue1 = 0;
     double ocValue2 = 0;
-    int turnstop=0;
+    int i=0, j=0;
     LCDInitialize();
-    
-    
+    bar=0;
+    barcode[0]=' ';
+    barcode[1]=' ';
+    barcode[2]=' ';barcode[3]=' ';
+
+
     TRISBbits.TRISB2 = 1; //left
-   // TRISBbits.TRISB0 = 1;//middle
+    TRISAbits.TRISA1 = 1;//barcode
     TRISBbits.TRISB3 = 1;//right
-    //1111 1111 1100 1011
-    AD1PCFG &= 0xFFCB;
-    AD1CON2=0x0404;
+    //1111 1111 1100 1101
+    AD1PCFG &= 0xFFCD;
+    //ad1con2 0000 0100 0000 1000
+    AD1CON2=0x0408;
     AD1CON1 = 0x20E4;
-    //0000 0100 00000100;
+    //0000 0100 0000 0100;
     AD1CON3 = 0x0101;
-  //  AD1CHS = 0x0004;
-    AD1CSSL = 0x0030;
+  //  0000 0000 0011 0010
+    AD1CSSL = 0x0032;
 
     TRISBbits.TRISB10 = 0;
     OC1CON=0x0006; //pwm1, left
@@ -57,7 +95,7 @@ int main() {
     OC1RS=0;
     RPOR5bits.RP11R = 18;
 
-    TRISBbits.TRISB0 = 0;
+    TRISBbits.TRISB11 = 0;
     OC2CON=0x0006; //pwm2, right
     OC2R=0;
     OC2RS=0;
@@ -99,126 +137,147 @@ int main() {
             LCDMoveCursor(0,0);
             sprintf(adcValueStr," %4d",ADC1BUF0);
             LCDPrintString(adcValueStr);
-            LCDMoveCursor(1,0);
+           /* LCDMoveCursor(1,0);
             sprintf(adcValueStr," %4d",ADC1BUF1);
             LCDPrintString(adcValueStr);
+            //LCDPrintString(" ");
+            sprintf(adcValueStr, " %4d", ADC1BUF2);
+            LCDPrintString(adcValueStr);*/
         
-                left=ADC1BUF0;
+                bar=ADC1BUF0;
               
-               right=ADC1BUF1;
-             
-               
-                
-    
+                right=ADC1BUF1;
 
-                if(left<100 && right >200) {
+                left=ADC1BUF2;
+
+                if(left<100 && right >200) {//top white
                     PORTAbits.RA0=1;
-                    ocValue1=0.70;
-                    ocValue2=0.15;
+                    
                    
-                } else if(left>200 && right <100){
+                        ocValue1=0.70;
+                    ocValue2=0.15;
+                    
+                } else if(left>200 && right <100){//top black
                     PORTAbits.RA0=1;
-                    ocValue1=0.15;
+                    
+                    
+                        ocValue1=0.15;
                     ocValue2=0.70;
                     
-                } else if(right>200 && left >200) {
-                    //PORTAbits.RA0=0;
-                    //ocValue1=0;
-                    //ocValue2=0;
-                    //while(turned==0) {
+                    
+                } else if(right>200 && left >200) {//both black
+                    PORTAbits.RA0=1;
+                  
 
                        if(turnstop==0) {
-                            turnstop=1;
-                        ocValue1=0;
-                        ocValue2=0.77;
-                        turnstop=1;
-                       } else if(turnstop==10){
-                           ocValue1=0;
-                           ocValue2=0;
-                       }
-                        
-                    //}
 
-                    //    ocValue1=0.0;
-                      //  ocValue2=0.0;
+                            turnstop=1;
+                            ocValue1=0;
+                            ocValue2=0.77;
+                        
+                       } else if(turnstop==2){
+                           ocValue1=0.64;
+                           ocValue2=0.0;
+                           turnstop=3;
+                            
+                       } else if(turnstop==425) {
+                           ocValue1=0.77;
+                           ocValue2=0;
+                           turnstop=650;
+                       }
+
+
+                
                     
-                } else if(right<100 && left<100) {
+                } else if(right<100 && left<100) {//both white
                     PORTAbits.RA0=1;
-                    ocValue1=0.65;
-                    ocValue2=0.67;
-                    turnstop=10;
+                    
+                    if(turnstop==1) {
+                        
+                        ocValue1=0.65;
+                        ocValue2=0.67;
+                        turnstop=2;
+                    } else if(turnstop==3) {
+                        ocValue1=0.64;
+                        ocValue2=0;
+                        turnstop++;
+                    }else if(turnstop>3 && turnstop <425) {
+                        ocValue1=0.64;
+                        ocValue2=0;
+                        turnstop++;
+                    } else {
+
+                      
+                        ocValue1=0.65;
+                        ocValue2=0.67;
+                       
+                    }
+                   
                 }
                converted = 0;
-            /*if(left>500 && right<400 ) {
-                ocValue1 = 1.0;
-		ocValue2 = (adcValue / 1.65);
-            } elseif (left<400 && right>500 ){
-                ocValue1 = ((3.3-adcValue)/ 1.65);
-		ocValue2 = 1.0;
-            } else {
-                ocValue1 = 1.0;
-		ocValue2 = 1.0;
-            }*/
-           /* if((adcValue/3.3)*100 < 49){
-		ocValue1 = 1.0;
-		ocValue2 = (adcValue / 1.65);
-            } else if((adcValue/3.3)*100 > 51){
-		ocValue1 = ((3.3-adcValue)/ 1.65);
-		ocValue2 = 1.0;
-            } else {														//Move straight
-		ocValue1 = 1.0;
-		ocValue2 = 1.0;
-            }
-*/
+           
             OC1RS=(int)(ocValue1*period)/2;
             OC2RS=(int)(ocValue2*period)/2;
-            
-          /*  LCDMoveCursor(1,0);
-            sprintf(adcValueStr,"%2.2f",left);
-            LCDPrintString(adcValueStr);
-            sprintf(adcValueStr," %2.2f",right);
-            LCDPrintString(adcValueStr);*/
+           // barcode[0]='0'; barcode[0]='0'; barcode[0]='0'; barcode[0]='1';
+             //           LCDMoveCursor(1,0);
+               //         LCDPrintString(barcode);
 
-           
-            //sprintf(adcValueStr,"%4d",(int)(ocValue1*period));
-            //LCDPrintString(adcValueStr);
-            //LCDPrintString(" ");
-           // LCDMoveCursor(1,5);
-           // sprintf(adcValueStr,"%4d",(int)(ocValue2*period));
-            //LCDPrintString(adcValueStr);
+/*
+            if(bar>400) {
+                i=1;
+            }
+            if(i==1) {
+                if(bar>100) {
+                    if(bar>400) {barcode[j]='0';j++;}
+                    if(bar<400&&bar>300) {barcode[j]='1';j++;}
+                }
+            }
+            if(j==4) {i=0;j=0;
+            LCDMoveCursor(1,0);
+            barcode[4]='\0';
+                    LCDPrintString(barcode);}*/
 
-            
-        }
 
+            /*Barcode Scanning*/
+            i=0;
+            switch(state) {
+                case 0:
+                    if(bar>400) state=1;
+                    LCDMoveCursor(1,0);
+                   // LCDPrintString("s0");
+                    break;
+                case 1:
+                   // LCDMoveCursor(1,0);
+                   // LCDPrintString("s1");
+                    if(i==4) {
+                        state=0;
+                        
+                    } else
+                    if(bar<100) state=2;
+                    break;
+                case 2:
+                    //LCDMoveCursor(1,0);
+                    //LCDPrintString("s2");
+                    if(bar>400) {
+                        LCDMoveCursor(1,i);
+                        LCDPrintChar('2');
+                        i++;
+                        state=1;
+                        
+                        
+                    }
+                    if(bar<400&&bar>300) {
+                        LCDMoveCursor(1,i+3);
+                    LCDPrintChar('1');i++;state=1;}
 
-        /*
-        switch(state) {
-            case 0:
-                //how to control motors?
-                PORTAbits.RA0=0;
-                break;
-            case 1:
-                PORTAbits.RA0=1;
-                LATBbits.LATB8 = 0;
-                LATBbits.LATB9 = 0;
-                RPOR0bits.RP0R = 18;
-                RPOR5bits.RP10R = 19;
-                break;
-            case 2:
-                PORTAbits.RA0=0;
-                break;
-            case 3:
-                PORTAbits.RA0=1;
-                RPOR4bits.RP8R = 18;
-                RPOR4bits.RP9R = 19;
-                PORTBbits.RB0 = 0;
-                PORTBbits.RB10 = 0;
+                    
+                    
+                    break;
                 
-                break;
+            }
         }
- LCDMoveCursor(1,0);
-       sprintf(adcValueStr,"%1d",state);
-            LCDPrintString(adcValueStr);*/
+
+
     }
     
     
