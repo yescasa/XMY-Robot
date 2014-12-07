@@ -28,6 +28,7 @@ volatile int left, bar, right;
 volatile int turned = 0;
 volatile int turnstop=0;
 volatile char barcode[5];
+volatile long int wait=0;
 
 /*
  * 
@@ -141,8 +142,9 @@ int main() {
             sprintf(adcValueStr," %4d",ADC1BUF1);
             LCDPrintString(adcValueStr);
             //LCDPrintString(" ");
-            sprintf(adcValueStr, " %4d", ADC1BUF2);
-            LCDPrintString(adcValueStr);*/
+//            sprintf(adcValueStr, " %4d", ADC1BUF2);
+//            LCDPrintString(adcValueStr);
+*/
         
                 bar=ADC1BUF0;
               
@@ -235,45 +237,84 @@ int main() {
             if(j==4) {i=0;j=0;
             LCDMoveCursor(1,0);
             barcode[4]='\0';
-                    LCDPrintString(barcode);}*/
+            //LCDPrintString(barcode);}
+*/
 
 
             /*Barcode Scanning*/
-            i=0;
+            
             switch(state) {
+
                 case 0:
-                    if(bar>400) state=1;
-                    LCDMoveCursor(1,0);
+					if(i=4){
+						for(wait=0;wait<1000000;wait++){
+						
+						}
+						i=0;
+						LCDClear();
+					}
+                    if(bar<100) state=5;
+					
+                   // LCDMoveCursor(1,0);
                    // LCDPrintString("s0");
+
+				
                     break;
+
                 case 1:
                    // LCDMoveCursor(1,0);
                    // LCDPrintString("s1");
                     if(i==4) {
-                        state=0;
-                        
-                    } else
-                    if(bar<100) state=2;
+                        state=0;   
+                    } 
+					else if(bar<100) state=2;
                     break;
+
                 case 2:
                     //LCDMoveCursor(1,0);
                     //LCDPrintString("s2");
-                    if(bar>400) {
-                        LCDMoveCursor(1,i);
-                        LCDPrintChar('2');
-                        i++;
-                        state=1;
-                        
-                        
+
+                    if(bar>300) {
+                        state=4;
                     }
-                    if(bar<400&&bar>300) {
+
+                   /* if(bar<400&&bar>300) {
                         LCDMoveCursor(1,i+3);
                     LCDPrintChar('1');i++;state=1;}
+					*/
 
-                    
-                    
                     break;
-                
+				case 3:
+
+					//	if(bar>300)state=4;
+
+
+				break;
+				
+
+				case 4:
+					if(bar<100){
+					    LCDMoveCursor(1,i);
+                        LCDPrintChar('1');
+						LCDMoveCursor(1,4);
+                        i++;
+						state=1;
+					}
+					else if(bar>400) {
+					    LCDMoveCursor(1,i);
+                        LCDPrintChar('0');
+                        i++;
+						state=1;
+					}
+												
+
+				break;
+
+				case 5:
+				if(bar>400)	state=1;
+				break;
+
+
             }
         }
 
